@@ -1,43 +1,40 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
-#include <string.h>
+#include <time.h>
 
 int main() {
     key_t key;
-    int msgid[10];
-    char command[50];
+    int msgid;
     struct msqid_ds buf;
 
-    printf("Creating 10 message queues...\n");
+    key = ftok("progfile", 65);
 
-    for (int i = 0; i < 10; i++) {
-        key = ftok(".", i + 1);
-        msgid[i] = msgget(key, IPC_CREAT | 0666);
-        if (msgid[i] == -1) {
-            perror("msgget failed");
-            return 1;
-        }
-        printf("Queue %d created with ID: %d\n", i + 1, msgid[i]);
+    msgid = msgget(key, IPC_CREAT | 0666);
+
+    if (msgid == -1) {
+        perror("msgget");
+        return 1;
     }
 
-    printf("\nDeleting message queues using system(ipcrm)...\n");
-    for (int i = 0; i < 10; i++) {
-        sprintf(command, "ipcrm -q %d", msgid[i]);
-        system(command);
-        printf("Queue with ID %d deleted.\n", msgid[i]);
+    if (msgctl(msgid, IPC_STAT, &buf) == -1) {
+        perror("msgctl");
+        return 1;
     }
 
-    printf("\nChecking status of each message queue after deletion:\n");
-    for (int i = 0; i < 10; i++) {
-        if (msgctl(msgid[i], IPC_STAT, &buf) == -1) {
-            printf("Queue ID %d: Does not exist (deleted successfully).\n", msgid[i]);
-        } else {
-            printf("Queue ID %d: Still exists (deletion failed).\n", msgid[i]);
-        }
-    }
+    printf("Message Queue Properties:\n");
+    printf("----------------------------\n");
+    printf("Queue ID: %d\n", msgid);
+    printf("Owner UID: %d\n", buf.msg_perm.uid);
+    printf("Owner GID: %d\n", buf.msg_perm.gid);
+    printf("Permissions: %o\n", buf.msg_perm.mode);
+    printf("Current number of bytes in queue: %lu\n", buf.__msg_cbytes);
+    printf("Number of messages in queue: %lu\n", buf.msg_qnum);
+    printf("Max bytes allowed in queue: %lu\n", buf.msg_qbytes);
+    printf("Last message sent time: %s", ctime(&buf.msg_stime));
+    printf("Last message received time: %s", ctime(&buf.msg_rtime));
+    printf("Last change time: %s", ctime(&buf.msg_ctime));
 
     return 0;
 }
