@@ -9,8 +9,7 @@ int main() {
     int msgid;
     struct msqid_ds buf;
 
-    key = ftok("progfile", 65);
-
+    key = ftok("progfile", 65);  // Ensure "progfile" exists in current directory
     msgid = msgget(key, IPC_CREAT | 0666);
 
     if (msgid == -1) {
@@ -19,7 +18,7 @@ int main() {
     }
 
     if (msgctl(msgid, IPC_STAT, &buf) == -1) {
-        perror("msgctl");
+        perror("msgctl - IPC_STAT");
         return 1;
     }
 
@@ -36,5 +35,11 @@ int main() {
     printf("Last message received time: %s", ctime(&buf.msg_rtime));
     printf("Last change time: %s", ctime(&buf.msg_ctime));
 
+    if (msgctl(msgid, IPC_RMID, NULL) == -1) {
+        perror("msgctl - IPC_RMID");
+        return 1;
+    }
+
+    printf("\nMessage queue with ID %d deleted successfully.\n", msgid);
     return 0;
 }
